@@ -1,0 +1,66 @@
+add io
+collect * from outer/clouds
+
+imm conn: clouds.connection = clouds.connect(
+    machine: 'localhost',
+    user: 'primary',
+    database: 'sistema',
+    password: 'senha_segura_123'
+)
+
+explicit function crud () -> nothing (
+
+    implicit function criar_usuario (nome: text, email: web.mail) -> nothing (
+        conn.command_sql(
+            'INSERT INTO usuarios (nome, email) VALUES (&{}, &{})',
+            &{nome, email}
+        )
+        conn.consolidate()
+    )
+
+    implicit function listar_usuarios () -> marray(conn.table('usuarios').content.types) (
+        conn.command_sql('SELECT id, nome, email FROM usuarios')
+        return conn.fetch_all()
+    )
+
+    implicit function buscar_usuario (id: int) -> array(conn.table('usuarios').content.types) (
+        conn.command_sql(
+            'SELECT id, nome, email FROM usuarios WHERE id = &{}',
+        &{id}
+        )
+        return conn.fetch_one()
+    )
+
+    implicit function atualizar_usuario (id: int, nome: text, email: web.mail) -> nothing (
+        conn.command_sql(
+            "UPDATE usuarios SET nome = &{}, email = &{} WHERE id = &{}",
+            &{nome, email, id}
+        )
+        conn.consolidate()
+    )
+
+    implicit function deletar_usuario (id: int) -> nothing (
+        conn.command_sql(
+            'DELETE FROM usuarios WHERE id = &{}',
+            &{id}
+        )
+        conn.consolidate()
+    )
+    
+)
+
+explicit function program () -> nothing (
+    crud(pass).criar_usuario('João', 'joao@email.com')
+
+    display('Usuários: ', crud(pass).listar_usuarios())
+
+    atualizar_usuario(1, "João Silva", "joao.silva@email.com")
+
+    display('Usuário: ', crud(pass).buscar_usuario(1))
+
+    crud(pass).deletar_usuario(1)
+
+    display('Depois de excluir: ', crud(pass).listar_usuarios())
+
+    conn.finish()
+)
